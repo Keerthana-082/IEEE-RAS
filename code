@@ -1,0 +1,127 @@
+#include <Servo.h>
+
+// Ultrasonic Sensor 1 - Entry
+#define TRIG1 4
+#define ECHO1 5
+
+// Ultrasonic Sensor 2 - Exit
+#define TRIG2 7
+#define ECHO2 8
+
+// Servo motor
+#define SERVO_PIN 9
+
+// LEDs
+#define GREEN_LED 10
+#define RED_LED 11
+
+// Distance threshold in cm
+#define THRESHOLD 20
+
+// Servo positions
+#define OPEN_ANGLE 90
+#define CLOSE_ANGLE 0
+
+Servo barrier;
+
+// Function to measure distance
+float getDistance(int trigPin, int echoPin) {
+
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+
+  digitalWrite(trigPin, LOW);
+
+  long duration = pulseIn(echoPin, HIGH);
+
+  float distance = duration * 0.0343 / 2;
+
+  return distance;
+}
+
+void setup() {
+
+  Serial.begin(9600);
+
+  // Sensor 1
+  pinMode(TRIG1, OUTPUT);
+  pinMode(ECHO1, INPUT);
+
+  // Sensor 2
+  pinMode(TRIG2, OUTPUT);
+  pinMode(ECHO2, INPUT);
+
+  // LEDs
+  pinMode(GREEN_LED, OUTPUT);
+  pinMode(RED_LED, OUTPUT);
+
+  // Servo
+  barrier.attach(SERVO_PIN);
+
+  // Initially barrier is closed
+  barrier.write(CLOSE_ANGLE);
+
+  digitalWrite(RED_LED, HIGH);
+  digitalWrite(GREEN_LED, LOW);
+}
+
+void loop() {
+
+  // Measure distance from both sensors
+  float distance1 = getDistance(TRIG1, ECHO1);
+  float distance2 = getDistance(TRIG2, ECHO2);
+
+  Serial.print("Entry Sensor: ");
+  Serial.print(distance1);
+  Serial.print(" cm");
+
+  Serial.print("   Exit Sensor: ");
+  Serial.print(distance2);
+  Serial.println(" cm");
+
+
+  // Vehicle approaching
+  if (distance1 <= THRESHOLD) {
+
+    Serial.println("Vehicle detected - Opening barrier");
+
+    barrier.write(OPEN_ANGLE);
+
+    digitalWrite(GREEN_LED, HIGH);
+    digitalWrite(RED_LED, LOW);
+
+    delay(1000);
+
+
+    // Wait until vehicle is detected by Sensor 2
+    while (true) {
+
+      distance2 = getDistance(TRIG2, ECHO2);
+
+      Serial.print("Exit Sensor: ");
+      Serial.print(distance2);
+      Serial.println(" cm");
+
+      if (distance2 <= THRESHOLD) {
+
+        Serial.println("Vehicle passed - Closing barrier");
+
+        delay(1000);
+
+        barrier.write(CLOSE_ANGLE);
+
+        digitalWrite(GREEN_LED, LOW);
+        digitalWrite(RED_LED, HIGH);
+
+        break;
+      }
+
+      delay(100);
+    }
+  }
+
+  delay(100);
+}
